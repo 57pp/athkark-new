@@ -1,0 +1,585 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '../core/notifications/adhkar_notifications.dart';
+import '../core/theme/colors.dart';
+import '../core/theme/colors.dart' show AppColors, AppTextStyles;
+
+class AdhkarNotificationsSettingsScreen extends StatefulWidget {
+  const AdhkarNotificationsSettingsScreen({super.key});
+
+  @override
+  State<AdhkarNotificationsSettingsScreen> createState() =>
+      _AdhkarNotificationsSettingsScreenState();
+}
+
+class _AdhkarNotificationsSettingsScreenState
+    extends State<AdhkarNotificationsSettingsScreen> {
+  final AdhkarNotifications _adhkarNotifications = AdhkarNotifications.instance;
+  
+  // إعدادات الإشعارات
+  bool _morningEnabled = false;
+  bool _eveningEnabled = false;
+  bool _postPrayerEnabled = false;
+  bool _sleepEnabled = false;
+  bool _generalEnabled = false;
+  
+  // أوقات الإشعارات
+  TimeOfDay _morningTime = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay _eveningTime = const TimeOfDay(hour: 18, minute: 0);
+  TimeOfDay _sleepTime = const TimeOfDay(hour: 22, minute: 0);
+  
+  // إعدادات مخصصة
+  bool _playSound = true;
+  bool _enableVibration = true;
+  bool _showAdhkarText = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  /// تحميل الإعدادات المحفوظة
+  Future<void> _loadSettings() async {
+    // Load user preferences
+    setState(() {
+      _morningEnabled = true; // Default enabled
+      _eveningEnabled = true; // Default enabled
+      _postPrayerEnabled = true; // Default enabled
+      _sleepEnabled = true; // Default enabled
+      _generalEnabled = true; // Default enabled
+      
+      _playSound = true;
+      _enableVibration = true;
+      _showAdhkarText = true;
+    });
+  }
+
+  /// حفظ الإعدادات
+  Future<void> _saveSettings() async {
+    await _adhkarNotifications.scheduleMorningAdhkar(
+      hour: _morningTime.hour,
+      minute: _morningTime.minute,
+    );
+    
+    await _adhkarNotifications.scheduleEveningAdhkar(
+      hour: _eveningTime.hour,
+      minute: _eveningTime.minute,
+    );
+    
+    await _adhkarNotifications.scheduleSleepAdhkar(
+      hour: _sleepTime.hour,
+      minute: _sleepTime.minute,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم حفظ إعدادات الأذكار بنجاح'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// اختبار الإشعارات
+  Future<void> _testNotification(String type) async {
+    await _adhkarNotifications.showImmediateAdhkar(type: type);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم إرسال ${_getNotificationTypeName(type)} التجريبي'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// الحصول على اسم نوع الإشعار
+  String _getNotificationTypeName(String type) {
+    switch (type) {
+      case 'morning':
+        return 'أذكار الصباح';
+      case 'evening':
+        return 'أذكار المساء';
+      case 'post_prayer':
+        return 'أذكار بعد الصلاة';
+      case 'sleep':
+        return 'أذكار النوم';
+      default:
+        return 'أذكار عامة';
+    }
+  }
+
+  /// اختيار الوقت
+  Future<void> _selectTime({
+    required TimeOfDay initialTime,
+    required Function(TimeOfDay) onTimeSelected,
+    required String title,
+  }) async {
+    final TimeOfDay? selectedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (selectedTime != null) {
+      onTimeSelected(selectedTime);
+      await _saveSettings();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'إعدادات إشعارات الأذكار',
+            style: AppTextStyles.headline.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.primaryGradientDark
+                  : AppColors.primaryGradientLight,
+            ),
+          ),
+        ),
+        body: ListView(
+          padding: EdgeInsets.all(16.w),
+          children: [
+            _buildMainSettingsCard(),
+            SizedBox(height: 20.h),
+            _buildNotificationCategoriesCard(),
+            SizedBox(height: 20.h),
+            _buildTimingCard(),
+            SizedBox(height: 20.h),
+            _buildAdvancedSettingsCard(),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => _saveSettings(),
+          backgroundColor: AppColors.primaryColor,
+          child: Icon(Icons.save, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainSettingsCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.notifications,
+                  size: 24.sp,
+                  color: AppColors.primaryColor,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'الإعدادات الرئيسية',
+                  style: AppTextStyles.titleMedium,
+                ),
+              ],
+            ),
+            SizedBox(height: 16.h),
+            _buildSwitchTile(
+              title: 'تشغيل الإشعارات',
+              subtitle: 'تفعيل أو إيقاف جميع إشعارات الأذكار',
+              value: _morningEnabled || _eveningEnabled || _postPrayerEnabled || _sleepEnabled,
+              onChanged: (value) {
+                setState(() {
+                  _morningEnabled = value;
+                  _eveningEnabled = value;
+                  _postPrayerEnabled = value;
+                  _sleepEnabled = value;
+                  _generalEnabled = value;
+                });
+                _saveSettings();
+              },
+            ),
+            Divider(height: 1.h),
+            _buildSwitchTile(
+              title: 'تشغيل الأصوات',
+              subtitle: 'تشغيل الأصوات مع الإشعارات',
+              value: _playSound,
+              onChanged: (value) {
+                setState(() => _playSound = value);
+                _saveSettings();
+              },
+            ),
+            _buildSwitchTile(
+              title: 'الاهتزاز',
+              subtitle: 'تفعيل الاهتزاز مع الإشعارات',
+              value: _enableVibration,
+              onChanged: (value) {
+                setState(() => _enableVibration = value);
+                _saveSettings();
+              },
+            ),
+            _buildSwitchTile(
+              title: 'عرض نص الذكر',
+              subtitle: 'عرض نص الذكر في الإشعار',
+              value: _showAdhkarText,
+              onChanged: (value) {
+                setState(() => _showAdhkarText = value);
+                _saveSettings();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationCategoriesCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.book,
+                  size: 24.sp,
+                  color: AppColors.secondaryColor,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'فئات الأذكار',
+                  style: AppTextStyles.titleMedium,
+                ),
+              ],
+            ),
+            SizedBox(height: 16.h),
+            _buildAdhkarCategory(
+              type: 'morning',
+              title: '🌅 أذكار الصباح',
+              subtitle: 'إشعارات صباحية لتذكيرك بأذكار الصباح المباركة',
+              isEnabled: _morningEnabled,
+              onChanged: (value) {
+                setState(() => _morningEnabled = value);
+                _saveSettings();
+              },
+              onTest: () => _testNotification('morning'),
+            ),
+            _buildAdhkarCategory(
+              type: 'evening',
+              title: '🌆 أذكار المساء',
+              subtitle: 'إشعارات مسائية لتذكيرك بأذكار المساء المباركة',
+              isEnabled: _eveningEnabled,
+              onChanged: (value) {
+                setState(() => _eveningEnabled = value);
+                _saveSettings();
+              },
+              onTest: () => _testNotification('evening'),
+            ),
+            _buildAdhkarCategory(
+              type: 'post_prayer',
+              title: '🤲 أذكار بعد الصلاة',
+              subtitle: 'إشعارات تذكير بأذكار ما بعد الصلاة',
+              isEnabled: _postPrayerEnabled,
+              onChanged: (value) {
+                setState(() => _postPrayerEnabled = value);
+                _saveSettings();
+              },
+              onTest: () => _testNotification('post_prayer'),
+            ),
+            _buildAdhkarCategory(
+              type: 'sleep',
+              title: '🌙 أذكار النوم',
+              subtitle: 'إشعارات تذكير بأذكار النوم المباركة',
+              isEnabled: _sleepEnabled,
+              onChanged: (value) {
+                setState(() => _sleepEnabled = value);
+                _saveSettings();
+              },
+              onTest: () => _testNotification('sleep'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdhkarCategory({
+    required String type,
+    required String title,
+    required String subtitle,
+    required bool isEnabled,
+    required Function(bool) onChanged,
+    required VoidCallback onTest,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 16.w),
+          SizedBox(
+            width: 50.w,
+            child: Switch(
+              value: isEnabled,
+              onChanged: onChanged,
+              activeColor: AppColors.primaryColor,
+            ),
+          ),
+          SizedBox(width: 8.w),
+          IconButton(
+            icon: Icon(
+              Icons.play_arrow,
+              color: AppColors.primaryColor,
+              size: 20.sp,
+            ),
+            onPressed: onTest,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimingCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.schedule,
+                  size: 24.sp,
+                  color: AppColors.secondaryColor,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'توقيت الإشعارات',
+                  style: AppTextStyles.titleMedium,
+                ),
+              ],
+            ),
+            SizedBox(height: 16.h),
+            if (_morningEnabled)
+              _buildTimeSetting(
+                title: 'أذكار الصباح',
+                time: _morningTime,
+                onTimeTap: () => _selectTime(
+                  initialTime: _morningTime,
+                  onTimeSelected: (newTime) {
+                    setState(() => _morningTime = newTime);
+                    _saveSettings();
+                  },
+                  title: 'اختر وقت أذكار الصباح',
+                ),
+              ),
+            if (_eveningEnabled)
+              _buildTimeSetting(
+                title: 'أذكار المساء',
+                time: _eveningTime,
+                onTimeTap: () => _selectTime(
+                  initialTime: _eveningTime,
+                  onTimeSelected: (newTime) {
+                    setState(() => _eveningTime = newTime);
+                    _saveSettings();
+                  },
+                  title: 'اختر وقت أذكار المساء',
+                ),
+              ),
+            if (_sleepEnabled)
+              _buildTimeSetting(
+                title: 'أذكار النوم',
+                time: _sleepTime,
+                onTimeTap: () => _selectTime(
+                  initialTime: _sleepTime,
+                  onTimeSelected: (newTime) {
+                    setState(() => _sleepTime = newTime);
+                    _saveSettings();
+                  },
+                  title: 'اختر وقت أذكار النوم',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeSetting({
+    required String title,
+    required TimeOfDay time,
+    required VoidCallback onTimeTap,
+  }) {
+    return ListTile(
+      title: Text(
+        title,
+        style: AppTextStyles.bodyLarge,
+      ),
+      subtitle: Text(
+        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+        style: AppTextStyles.bodySmall,
+      ),
+      trailing: Icon(
+        Icons.access_time,
+        color: AppColors.primaryColor,
+      ),
+      onTap: onTimeTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+  }
+
+  Widget _buildAdvancedSettingsCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.tune,
+                  size: 24.sp,
+                  color: AppColors.secondaryColor,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'إعدادات متقدمة',
+                  style: AppTextStyles.titleMedium,
+                ),
+              ],
+            ),
+            SizedBox(height: 16.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _adhkarNotifications.cancelAllAdhkarNotifications(),
+                icon: const Icon(Icons.notifications_off),
+                label: const Text('إلغاء جميع الإشعارات'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _saveSettings(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('إعادة جدولة الإشعارات'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showPrayerTimesInfo(),
+                icon: const Icon(Icons.mosque),
+                label: const Text('معلومات الأذان'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPrayerTimesInfo() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('معلومات الأذان'),
+        content: const Text(
+          'الأذان يعمل تلقائياً في الخلفية عند كل صلاة. '
+          'يمكنك تخصيص الأوقات من إعدادات التطبيق.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('فهمت'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    return ListTile(
+      title: Text(
+        title,
+        style: AppTextStyles.bodyLarge.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: AppTextStyles.bodySmall.copyWith(
+          color: Colors.grey[600],
+        ),
+      ),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: AppColors.primaryColor,
+      ),
+      contentPadding: EdgeInsets.zero,
+    );
+  }
+}

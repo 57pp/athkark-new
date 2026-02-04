@@ -1,0 +1,75 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('app/key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else {
+    throw new Exception("key.properties file not found!")
+}
+
+android {
+    namespace "com.yournewname.athkarak"
+
+    // ✅ ارفع الـ SDK إلى 36
+    compileSdk = 36
+    ndkVersion = flutter.ndkVersion
+
+    // يفضّل استخدام Java 17 مع AGP الحديثة
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        // ❌ لا تضع namespace هنا
+        // ✅ استخدم applicationId
+        applicationId "com.yournewname.athkarak"
+
+        minSdk = flutter.minSdkVersion
+        // ✅ ارفع targetSdk إلى 36
+        targetSdk = 36
+
+        // ✅ الإصدار 3
+        versionCode = 3
+        versionName = "3.0.1"
+    }
+
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            // تفعيل ضغط الكود والموارد
+            minifyEnabled true          // تفعيل ضغط الكود
+            shrinkResources true        // حذف الموارد غير المستخدمة
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                          'proguard-rules.pro'
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
